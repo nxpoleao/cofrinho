@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="theme-color" content="#0f172a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Cofrinho — Controle Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface2: #273548;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --green: #34d399;
+  --green-bg: rgba(52,211,153,0.12);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.12);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.12);
+  --purple: #a78bfa;
+  --purple-bg: rgba(167,139,250,0.12);
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { font-size: 16px; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* LOGIN SCREEN */
+#login-screen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100dvh;
+  padding: 2rem;
+  text-align: center;
+}
+.login-logo { font-size: 64px; margin-bottom: 1rem; }
+.login-title { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 0.4rem; }
+.login-sub { font-size: 15px; color: var(--muted); margin-bottom: 2.5rem; line-height: 1.5; }
+.google-btn {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 14px 24px;
+  font-size: 15px; font-weight: 500; font-family: var(--font);
+  color: var(--text); cursor: pointer;
+  transition: background 0.15s;
+  width: 100%; max-width: 300px; justify-content: center;
+}
+.google-btn:hover { background: var(--surface2); }
+.google-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.login-note { font-size: 12px; color: var(--muted); margin-top: 1.5rem; }
+
+/* APP SCREEN */
+#app-screen { display: none; padding-bottom: calc(80px + var(--safe-bottom)); padding-top: var(--safe-top); }
+
+/* LOADING */
+#loading-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100dvh; flex-direction: column; gap: 16px;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--surface2);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: var(--muted); }
+
+/* HEADER */
+.app-header {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo-wrap { display: flex; align-items: center; gap: 10px; }
+.logo-icon { font-size: 26px; }
+.logo-text { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  object-fit: cover; border: 2px solid var(--border2);
+  cursor: pointer;
+}
+.user-avatar-placeholder {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--blue-bg); border: 2px solid var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: var(--blue); cursor: pointer;
+}
+.logout-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 12px; color: var(--muted); cursor: pointer; font-family: var(--font);
+}
+.logout-btn:hover { color: var(--red); border-color: var(--red); }
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green); display: inline-block;
+  margin-right: 4px;
+}
+.sync-dot.syncing { background: var(--blue); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* MONTH BAR */
+.month-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px 12px;
+}
+.month-ctrl { display: flex; align-items: center; gap: 6px; }
+.month-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); width: 32px; height: 32px; border-radius: 8px;
+  cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
+}
+.month-btn:hover { background: var(--surface2); color: var(--text); }
+.month-name { font-size: 14px; font-weight: 500; min-width: 90px; text-align: center; }
+.sync-label { font-size: 11px; color: var(--muted); display: flex; align-items: center; }
+
+/* SUMMARY */
+.summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 0 16px 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.card-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 5px; }
+.card-value { font-family: var(--mono); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-value.green { color: var(--green); }
+.card-value.red { color: var(--red); }
+.card-value.blue { color: var(--blue); }
+
+/* CHART */
+.chart-section { padding: 0 16px 16px; }
+.chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+.chart-box h3 { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+.chart-wrap { position: relative; height: 160px; }
+.chart-empty { height: 80px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
+
+/* TABS */
+.tabs { display: flex; gap: 6px; padding: 0 16px 14px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex-shrink: 0; padding: 8px 16px; border-radius: 99px;
+  font-size: 13px; font-weight: 500; border: 1px solid var(--border);
+  background: none; color: var(--muted); cursor: pointer; transition: all 0.15s;
+}
+.tab.active { background: var(--blue); color: #0f172a; border-color: var(--blue); font-weight: 600; }
+.tab.active.goals { background: var(--purple); border-color: var(--purple); }
+
+/* PANEL */
+.panel { padding: 0 16px; }
+
+/* ADD FORM */
+.add-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 14px; }
+.form-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.form-row:last-child { margin-bottom: 0; }
+.form-label { font-size: 11px; font-weight: 500; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.form-group { flex: 1; min-width: 0; }
+select, input[type=text], input[type=number] {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px; padding: 9px 11px;
+  font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+select:focus, input:focus { border-color: var(--blue); }
+select option { background: #1e293b; }
+.type-toggle { display: flex; gap: 6px; width: 100%; }
+.type-btn {
+  flex: 1; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border); background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.type-btn.active.in { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.type-btn.active.out { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+.add-btn {
+  width: 100%; padding: 11px; background: var(--blue); color: #0f172a;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer;
+}
+.add-btn:hover { opacity: 0.9; }
+.custom-cat-row { display: none; margin-top: 8px; }
+.custom-cat-row.show { display: flex; }
+
+/* TX LIST */
+.tx-list { display: flex; flex-direction: column; gap: 6px; }
+.tx-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: none; } }
+.tx-emoji { font-size: 20px; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tx-emoji.in { background: var(--green-bg); }
+.tx-emoji.out { background: var(--red-bg); }
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-cat { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.tx-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.tx-amount { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+.tx-amount.in { color: var(--green); }
+.tx-amount.out { color: var(--red); }
+.tx-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; padding: 2px; opacity: 0.5; }
+.tx-del:hover { opacity: 1; color: var(--red); }
+.empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 14px; }
+.empty-state .emoji { font-size: 36px; margin-bottom: 10px; }
+
+/* GOALS */
+.goal-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 14px; }
+.goal-form h3 { font-size: 13px; font-weight: 600; color: var(--purple); margin-bottom: 12px; }
+.goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 8px; animation: fadeIn 0.2s ease; }
+.goal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.goal-name { font-size: 16px; font-weight: 600; }
+.goal-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; opacity: 0.5; }
+.goal-del:hover { opacity: 1; color: var(--red); }
+.goal-amounts { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.goal-saved { font-family: var(--mono); color: var(--purple); font-weight: 500; }
+.goal-target { color: var(--muted); font-family: var(--mono); }
+.progress-bar { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+.progress-pct { font-size: 11px; color: var(--muted); }
+.goal-remaining { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.goal-remaining.done { color: var(--green); font-weight: 500; }
+.goal-add-saved { display: flex; gap: 8px; margin-top: 12px; }
+.goal-add-saved input { flex: 1; font-size: 13px; padding: 8px 10px; }
+.save-btn {
+  padding: 8px 14px; background: var(--purple-bg); color: var(--purple);
+  border: 1px solid var(--purple); border-radius: 10px;
+  font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; white-space: nowrap;
+}
+.save-btn:hover { background: var(--purple); color: #fff; }
+.goal-add-btn {
+  width: 100%; padding: 11px; background: var(--purple); color: #fff;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer;
+}
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: rgba(15,23,42,0.92);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  display: flex; padding-bottom: var(--safe-bottom); z-index: 100;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 8px; background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 11px; font-family: var(--font); transition: color 0.15s;
+}
+.nav-btn .nav-icon { font-size: 20px; line-height: 1; }
+.nav-btn.active { color: var(--blue); }
+.nav-btn.active.goals-nav { color: var(--purple); }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: calc(90px + var(--safe-bottom)); left: 50%; transform: translateX(-50%);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 99px; padding: 8px 18px; font-size: 13px;
+  color: var(--text); z-index: 999; white-space: nowrap;
+  animation: toastIn 0.2s ease; pointer-events: none;
+}
+@keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-text">Carregando...</div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:none">
+  <div class="login-logo">🐷</div>
+  <div class="login-title">Cofrinho</div>
+  <div class="login-sub">Controle financeiro pessoal.<br>Seus dados sincronizados em qualquer dispositivo.</div>
+  <button class="google-btn" onclick="loginGoogle()">
+    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.1 19 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.4 26.8 36 24 36c-5.2 0-9.6-3.2-11.3-7.8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.4 4.2-4.3 5.6l6.2 5.2C36.9 36.2 44 31 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+    Entrar com Google
+  </button>
+  <div class="login-note">Seus dados ficam salvos na nuvem e sincronizados<br>em todos os seus dispositivos.</div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <header class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-icon">🐷</div>
+      <div class="logo-text">Cofrinho</div>
+    </div>
+    <div class="header-right">
+      <span class="sync-label"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">sincronizado</span></span>
+      <button class="logout-btn" onclick="logoutUser()">Sair</button>
+    </div>
+  </header>
+
+  <div class="month-bar">
+    <div class="month-ctrl">
+      <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+      <span class="month-name" id="month-name">maio 2026</span>
+      <button class="month-btn" onclick="changeMonth(1)">›</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="card"><div class="card-label">Entradas</div><div class="card-value green" id="sum-in">R$ 0</div></div>
+    <div class="card"><div class="card-label">Saídas</div><div class="card-value red" id="sum-out">R$ 0</div></div>
+    <div class="card"><div class="card-label">Saldo</div><div class="card-value blue" id="sum-bal">R$ 0</div></div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-box">
+      <h3>gastos por categoria</h3>
+      <div id="chart-area"><div class="chart-empty">Adicione saídas para ver o gráfico</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('all',this)">Todos</button>
+    <button class="tab" onclick="setTab('in',this)">Entradas</button>
+    <button class="tab" onclick="setTab('out',this)">Saídas</button>
+    <button class="tab goals" onclick="setTab('goals',this)">🎯 Metas</button>
+  </div>
+
+  <div class="panel" id="panel-tx">
+    <div class="add-form">
+      <div class="form-row">
+        <div class="type-toggle">
+          <button class="type-btn in active" onclick="setType('in',this)">↑ Entrada</button>
+          <button class="type-btn out" onclick="setType('out',this)">↓ Saída</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Nome / Origem</div>
+          <input type="text" id="tx-name" placeholder="Ex: iFood, Salário, Uber..." maxlength="60" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Categoria</div>
+          <select id="tx-cat" onchange="onCatChange()"></select>
+          <div class="custom-cat-row" id="custom-cat-row">
+            <input type="text" id="tx-cat-custom" placeholder="Nome da categoria..." />
+          </div>
+        </div>
+        <div class="form-group" style="max-width:130px">
+          <div class="form-label">Valor (R$)</div>
+          <input type="number" id="tx-val" placeholder="0,00" min="0.01" step="0.01" />
+        </div>
+      </div>
+      <button class="add-btn" onclick="addTx()">+ Adicionar lançamento</button>
+    </div>
+    <div class="tx-list" id="tx-list">
+      <div class="empty-state"><div class="emoji">📋</div>Nenhum lançamento ainda.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-goals" style="display:none">
+    <div class="goal-form">
+      <h3>🎯 Nova meta financeira</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Nome do objetivo</div>
+          <input type="text" id="g-name" placeholder="Ex: Viagem, iPhone, Reserva..." maxlength="50" />
+        </div>
+        <div class="form-group" style="max-width:58px">
+          <div class="form-label">Emoji</div>
+          <input type="text" id="g-emoji" placeholder="🏖️" maxlength="2" style="text-align:center; font-size:18px;" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Valor alvo (R$)</div>
+          <input type="number" id="g-target" placeholder="5000" min="1" step="1" />
+        </div>
+        <div class="form-group">
+          <div class="form-label">Já guardei (R$)</div>
+          <input type="number" id="g-saved" placeholder="0" min="0" step="1" />
+        </div>
+      </div>
+      <button class="goal-add-btn" onclick="addGoal()">Criar meta</button>
+    </div>
+    <div id="goals-list"></div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <button class="nav-btn active" id="nav-all" onclick="setTab('all',null,'nav-all')">
+    <span class="nav-icon">📊</span>Todos
+  </button>
+  <button class="nav-btn" id="nav-in" onclick="setTab('in',null,'nav-in')">
+    <span class="nav-icon">📈</span>Entradas
+  </button>
+  <button class="nav-btn" id="nav-out" onclick="setTab('out',null,'nav-out')">
+    <span class="nav-icon">📉</span>Saídas
+  </button>
+  <button class="nav-btn goals-nav" id="nav-goals" onclick="setTab('goals',null,'nav-goals')">
+    <span class="nav-icon">🎯</span>Metas
+  </button>
+</nav>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCos915xegBHYvf7pcDHb7bXaFinB7uSvY",
+  authDomain: "cofrinho-4039d.firebaseapp.com",
+  projectId: "cofrinho-4039d",
+  storageBucket: "cofrinho-4039d.firebasestorage.app",
+  messagingSenderId: "634467300251",
+  appId: "1:634467300251:web:643e70e457d8a76dda673e"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let txUnsubscribe = null;
+let goalUnsubscribe = null;
+let allTxs = [];
+let allGoals = [];
+
+// Expose to global scope
+window._fb = { auth, db, collection, doc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy };
+
+window.loginGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    showToast('Erro ao entrar. Tente novamente.');
+    console.error(e);
+  }
+};
+
+window.logoutUser = async () => {
+  if (!confirm('Deseja sair da sua conta?')) return;
+  if (txUnsubscribe) txUnsubscribe();
+  if (goalUnsubscribe) goalUnsubscribe();
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, (user) => {
+  document.getElementById('loading-screen').style.display = 'none';
+  if (user) {
+    currentUser = user;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('bottom-nav').style.display = 'flex';
+    subscribeData();
+  } else {
+    currentUser = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    if (txUnsubscribe) txUnsubscribe();
+    if (goalUnsubscribe) goalUnsubscribe();
+  }
+});
+
+function subscribeData() {
+  setSyncing(true);
+  const uid = currentUser.uid;
+
+  const txQ = query(collection(db, 'users', uid, 'transactions'), orderBy('ts', 'desc'));
+  txUnsubscribe = onSnapshot(txQ, (snap) => {
+    allTxs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+    setSyncing(false);
+  });
+
+  const gQ = query(collection(db, 'users', uid, 'goals'), orderBy('ts', 'asc'));
+  goalUnsubscribe = onSnapshot(gQ, (snap) => {
+    allGoals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (window._activeFilter === 'goals') renderGoals();
+    setSyncing(false);
+  });
+}
+
+window._addTxDB = async (data) => {
+  setSyncing(true);
+  const uid = currentUser.uid;
+  await addDoc(collection(db, 'users', uid, 'transactions'), { ...data, ts: Date.now() });
+};
+
+window._delTxDB = async (id) => {
+  setSyncing(true);
+  const uid = currentUser.uid;
+  await deleteDoc(doc(db, 'users', uid, 'transactions', id));
+};
+
+window._addGoalDB = async (data) => {
+  setSyncing(true);
+  const uid = currentUser.uid;
+  await addDoc(collection(db, 'users', uid, 'goals'), { ...data, ts: Date.now() });
+};
+
+window._updateGoalDB = async (id, data) => {
+  setSyncing(true);
+  const uid = currentUser.uid;
+  await updateDoc(doc(db, 'users', uid, 'goals', id), data);
+};
+
+window._delGoalDB = async (id) => {
+  setSyncing(true);
+  const uid = currentUser.uid;
+  await deleteDoc(doc(db, 'users', uid, 'goals', id));
+};
+
+window._getAllTxs = () => allTxs;
+window._getAllGoals = () => allGoals;
+
+function setSyncing(s) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  if (!dot) return;
+  if (s) { dot.className = 'sync-dot syncing'; txt.textContent = 'sincronizando...'; }
+  else { dot.className = 'sync-dot'; txt.textContent = 'sincronizado'; }
+}
+
+function render() { if (window._render) window._render(); }
+</script>
+
+<script>
+const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+const CATS_IN = [
+  { value:'salario', label:'💼 Salário' },
+  { value:'freelance', label:'💻 Freelance / Bico' },
+  { value:'bonus', label:'🎁 Bônus / Comissão' },
+  { value:'investimento', label:'📈 Rendimento / Investimento' },
+  { value:'aluguel_recebido', label:'🏠 Aluguel recebido' },
+  { value:'presente', label:'🎀 Presente / Doação' },
+  { value:'reembolso', label:'🔄 Reembolso' },
+  { value:'outros_in', label:'➕ Outros (personalizar)' },
+];
+const CATS_OUT = [
+  { value:'alimentacao', label:'🍔 Alimentação' },
+  { value:'mercado', label:'🛒 Mercado / Supermercado' },
+  { value:'transporte', label:'🚗 Transporte / Combustível' },
+  { value:'moradia', label:'🏠 Moradia / Aluguel / Contas' },
+  { value:'saude', label:'❤️ Saúde / Farmácia' },
+  { value:'educacao', label:'📚 Educação / Cursos' },
+  { value:'lazer', label:'🎮 Lazer / Entretenimento' },
+  { value:'assinaturas', label:'📱 Assinaturas / Apps' },
+  { value:'vestuario', label:'👗 Vestuário / Beleza' },
+  { value:'viagem', label:'✈️ Viagem' },
+  { value:'pet', label:'🐾 Pet' },
+  { value:'presente_dado', label:'🎁 Presente dado' },
+  { value:'outros_out', label:'➕ Outros (personalizar)' },
+];
+const CAT_EMOJIS = {
+  salario:'💼', freelance:'💻', bonus:'🎁', investimento:'📈', aluguel_recebido:'🏠', presente:'🎀', reembolso:'🔄',
+  alimentacao:'🍔', mercado:'🛒', transporte:'🚗', moradia:'🏠', saude:'❤️', educacao:'📚', lazer:'🎮',
+  assinaturas:'📱', vestuario:'👗', viagem:'✈️', pet:'🐾', presente_dado:'🎁',
+};
+
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let txType = 'in';
+window._activeFilter = 'all';
+let chart = null;
+
+document.getElementById('month-name').textContent = MONTHS[currentMonth] + ' ' + currentYear;
+
+function fmtBRL(v) {
+  return 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function changeMonth(d) {
+  currentMonth += d;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  document.getElementById('month-name').textContent = MONTHS[currentMonth] + ' ' + currentYear;
+  render();
+}
+
+function setType(type, btn) {
+  txType = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fillCatOptions();
+}
+
+function fillCatOptions() {
+  const cats = txType === 'in' ? CATS_IN : CATS_OUT;
+  const sel = document.getElementById('tx-cat');
+  sel.innerHTML = cats.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+  onCatChange();
+}
+
+function onCatChange() {
+  const v = document.getElementById('tx-cat').value;
+  const row = document.getElementById('custom-cat-row');
+  if (v === 'outros_in' || v === 'outros_out') row.classList.add('show');
+  else { row.classList.remove('show'); document.getElementById('tx-cat-custom').value = ''; }
+}
+
+function getCatLabel(catVal, customLabel) {
+  if ((catVal === 'outros_in' || catVal === 'outros_out') && customLabel) return customLabel;
+  const all = [...CATS_IN, ...CATS_OUT];
+  const found = all.find(c => c.value === catVal);
+  return found ? found.label.replace(/^\S+\s/, '') : catVal;
+}
+
+function getCatEmoji(catVal, customLabel) {
+  if ((catVal === 'outros_in' || catVal === 'outros_out') && customLabel) return '🏷️';
+  return CAT_EMOJIS[catVal] || '📌';
+}
+
+async function addTx() {
+  const name = document.getElementById('tx-name').value.trim();
+  const catVal = document.getElementById('tx-cat').value;
+  const customCat = document.getElementById('tx-cat-custom').value.trim();
+  const val = parseFloat(document.getElementById('tx-val').value);
+  if (!name) { showToast('Informe o nome/origem.'); return; }
+  if (isNaN(val) || val <= 0) { showToast('Informe um valor válido.'); return; }
+  if ((catVal === 'outros_in' || catVal === 'outros_out') && !customCat) { showToast('Informe o nome da categoria.'); return; }
+  await window._addTxDB({ type: txType, name, catVal, customCat, value: val, month: currentMonth, year: currentYear });
+  document.getElementById('tx-name').value = '';
+  document.getElementById('tx-val').value = '';
+  document.getElementById('tx-cat-custom').value = '';
+  document.getElementById('tx-cat').selectedIndex = 0;
+  onCatChange();
+  showToast('Lançamento adicionado ✓');
+}
+
+async function delTx(id) {
+  await window._delTxDB(id);
+}
+
+async function addGoal() {
+  const name = document.getElementById('g-name').value.trim();
+  const emoji = document.getElementById('g-emoji').value.trim() || '🎯';
+  const target = parseFloat(document.getElementById('g-target').value);
+  const saved = parseFloat(document.getElementById('g-saved').value) || 0;
+  if (!name) { showToast('Informe o nome do objetivo.'); return; }
+  if (isNaN(target) || target <= 0) { showToast('Informe o valor alvo.'); return; }
+  await window._addGoalDB({ name, emoji, target, saved: Math.min(saved, target) });
+  document.getElementById('g-name').value = '';
+  document.getElementById('g-emoji').value = '';
+  document.getElementById('g-target').value = '';
+  document.getElementById('g-saved').value = '';
+  showToast('Meta criada ✓');
+}
+
+async function addSaved(id) {
+  const inp = document.getElementById('gs-' + id);
+  const v = parseFloat(inp.value);
+  if (isNaN(v) || v <= 0) { showToast('Informe um valor válido.'); return; }
+  const goals = window._getAllGoals();
+  const g = goals.find(g => g.id === id);
+  if (g) {
+    const newSaved = Math.min(+(g.saved + v).toFixed(2), g.target);
+    await window._updateGoalDB(id, { saved: newSaved });
+    inp.value = '';
+    showToast('Valor guardado ✓');
+  }
+}
+
+async function delGoal(id) {
+  await window._delGoalDB(id);
+}
+
+function monthTxs(txs) {
+  return txs.filter(t => t.month === currentMonth && t.year === currentYear);
+}
+
+window._render = function render() {
+  const txs = window._getAllTxs ? window._getAllTxs() : [];
+  const mTxs = monthTxs(txs);
+  const totalIn = mTxs.filter(t => t.type === 'in').reduce((a, t) => a + t.value, 0);
+  const totalOut = mTxs.filter(t => t.type === 'out').reduce((a, t) => a + t.value, 0);
+  const bal = totalIn - totalOut;
+  document.getElementById('sum-in').textContent = fmtBRL(totalIn);
+  document.getElementById('sum-out').textContent = fmtBRL(totalOut);
+  const balEl = document.getElementById('sum-bal');
+  balEl.textContent = fmtBRL(bal);
+  balEl.className = 'card-value ' + (bal >= 0 ? 'blue' : 'red');
+  renderList(mTxs);
+  renderChart(mTxs);
+};
+
+function renderList(mTxs) {
+  let filtered = mTxs;
+  if (window._activeFilter === 'in') filtered = mTxs.filter(t => t.type === 'in');
+  if (window._activeFilter === 'out') filtered = mTxs.filter(t => t.type === 'out');
+  const list = document.getElementById('tx-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="emoji">📋</div>Nenhum lançamento para este período.</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(t => {
+    const label = getCatLabel(t.catVal, t.customCat);
+    const emoji = getCatEmoji(t.catVal, t.customCat);
+    const sign = t.type === 'in' ? '+' : '-';
+    return `<div class="tx-item">
+      <div class="tx-emoji ${t.type}">${emoji}</div>
+      <div class="tx-info">
+        <div class="tx-name">${t.name}</div>
+        <div class="tx-cat">${label}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amount ${t.type}">${sign} ${fmtBRL(t.value)}</div>
+        <button class="tx-del" onclick="delTx('${t.id}')" aria-label="Remover">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderChart(mTxs) {
+  const outTxs = mTxs.filter(t => t.type === 'out');
+  const area = document.getElementById('chart-area');
+  if (!outTxs.length) {
+    if (chart) { chart.destroy(); chart = null; }
+    area.innerHTML = '<div class="chart-empty">Adicione saídas para ver o gráfico</div>';
+    return;
+  }
+  const cats = {};
+  outTxs.forEach(t => { const l = getCatLabel(t.catVal, t.customCat); cats[l] = (cats[l] || 0) + t.value; });
+  const labels = Object.keys(cats);
+  const data = Object.values(cats);
+  const colors = ['#60a5fa','#a78bfa','#34d399','#f87171','#fbbf24','#fb923c','#38bdf8','#f472b6','#4ade80','#c084fc'];
+  if (!chart) {
+    area.innerHTML = '<div class="chart-wrap"><canvas id="theChart" role="img" aria-label="Gastos por categoria"></canvas></div>';
+    chart = new Chart(document.getElementById('theChart'), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, data.length), borderWidth: 0, hoverOffset: 6 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11, family: 'DM Sans' }, padding: 12, boxWidth: 10, boxHeight: 10 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtBRL(ctx.raw)}` } }
+        },
+        cutout: '62%'
+      }
+    });
+  } else {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.data.datasets[0].backgroundColor = colors.slice(0, data.length);
+    chart.update();
+  }
+}
+
+function renderGoals() {
+  const goals = window._getAllGoals ? window._getAllGoals() : [];
+  const list = document.getElementById('goals-list');
+  if (!goals.length) {
+    list.innerHTML = '<div class="empty-state"><div class="emoji">🎯</div>Nenhuma meta criada ainda.</div>';
+    return;
+  }
+  list.innerHTML = goals.map(g => {
+    const pct = Math.min(100, Math.round((g.saved / g.target) * 100));
+    const remaining = g.target - g.saved;
+    const done = g.saved >= g.target;
+    const fillColor = done ? '#34d399' : (pct > 60 ? '#a78bfa' : '#60a5fa');
+    return `<div class="goal-card">
+      <div class="goal-header">
+        <div class="goal-name">${g.emoji} ${g.name}</div>
+        <button class="goal-del" onclick="delGoal('${g.id}')" aria-label="Remover meta">✕</button>
+      </div>
+      <div class="goal-amounts">
+        <span class="goal-saved">${fmtBRL(g.saved)} guardados</span>
+        <span class="goal-target">meta: ${fmtBRL(g.target)}</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${fillColor};"></div></div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="progress-pct">${pct}% concluído</div>
+        <div class="goal-remaining ${done?'done':''}">${done ? '🎉 Meta atingida!' : 'Falta ' + fmtBRL(remaining)}</div>
+      </div>
+      ${!done ? `<div class="goal-add-saved">
+        <input type="number" id="gs-${g.id}" placeholder="Adicionar valor guardado..." min="0.01" step="0.01" />
+        <button class="save-btn" onclick="addSaved('${g.id}')">+ Guardar</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function setTab(filter, tabBtn, navId) {
+  window._activeFilter = filter;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (tabBtn) tabBtn.classList.add('active');
+  const navMap = { all:'nav-all', in:'nav-in', out:'nav-out', goals:'nav-goals' };
+  const activeNav = document.getElementById(navId || navMap[filter]);
+  if (activeNav) activeNav.classList.add('active');
+  const tabMap = { all:0, in:1, out:2, goals:3 };
+  const tabs = document.querySelectorAll('.tab');
+  if (tabs[tabMap[filter]]) tabs[tabMap[filter]].classList.add('active');
+  if (filter === 'goals') {
+    document.getElementById('panel-tx').style.display = 'none';
+    document.getElementById('panel-goals').style.display = 'block';
+    renderGoals();
+  } else {
+    document.getElementById('panel-tx').style.display = 'block';
+    document.getElementById('panel-goals').style.display = 'none';
+    if (window._render) window._render();
+  }
+}
+
+let toastTimer;
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  clearTimeout(toastTimer);
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  toastTimer = setTimeout(() => t.remove(), 2500);
+}
+
+fillCatOptions();
+</script>
+</body>
+</html>
