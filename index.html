@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="theme-color" content="#0f172a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Cofrinho — Controle Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:#0f172a;--surface:#1e293b;--surface2:#273548;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#f1f5f9;--muted:#94a3b8;
+  --green:#34d399;--green-bg:rgba(52,211,153,0.12);
+  --red:#f87171;--red-bg:rgba(248,113,113,0.12);
+  --blue:#60a5fa;--blue-bg:rgba(96,165,250,0.12);
+  --purple:#a78bfa;--purple-bg:rgba(167,139,250,0.12);
+  --radius:12px;--radius-lg:16px;--radius-xl:20px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;max-width:480px;margin:0 auto;-webkit-font-smoothing:antialiased}
+#loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;gap:16px}
+.spinner{width:36px;height:36px;border:3px solid var(--surface2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--muted)}
+#login-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:2rem;text-align:center}
+.login-logo{font-size:64px;margin-bottom:1rem}
+.login-title{font-size:28px;font-weight:600;letter-spacing:-0.5px;margin-bottom:.4rem}
+.login-sub{font-size:15px;color:var(--muted);margin-bottom:2.5rem;line-height:1.5}
+.google-btn{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:14px 24px;font-size:15px;font-weight:500;font-family:var(--font);color:var(--text);cursor:pointer;width:100%;max-width:300px;justify-content:center;transition:background .15s}
+.google-btn:hover{background:var(--surface2)}
+.google-btn svg{width:20px;height:20px;flex-shrink:0}
+.login-note{font-size:12px;color:var(--muted);margin-top:1.5rem;line-height:1.6}
+#app-screen{display:none;padding-bottom:calc(80px + var(--safe-bottom));padding-top:var(--safe-top)}
+.app-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+.logo-wrap{display:flex;align-items:center;gap:10px}
+.logo-icon{font-size:26px}
+.logo-text{font-size:20px;font-weight:600;letter-spacing:-0.5px}
+.header-right{display:flex;align-items:center;gap:10px}
+.sync-label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);transition:background .3s;flex-shrink:0}
+.sync-dot.syncing{background:var(--blue);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--muted);cursor:pointer;font-family:var(--font)}
+.logout-btn:hover{color:var(--red);border-color:var(--red)}
+.month-bar{display:flex;align-items:center;padding:0 20px 12px}
+.month-ctrl{display:flex;align-items:center;gap:6px}
+.month-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.month-btn:hover{background:var(--surface2);color:var(--text)}
+.month-name{font-size:14px;font-weight:500;min-width:90px;text-align:center}
+.summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 16px 16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px}
+.card-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:5px}
+.card-value{font-family:var(--mono);font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-value.green{color:var(--green)}.card-value.red{color:var(--red)}.card-value.blue{color:var(--blue)}
+.chart-section{padding:0 16px 16px}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.chart-box h3{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.chart-wrap{position:relative;height:160px}
+.chart-empty{height:80px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:6px;padding:0 16px 14px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:8px 16px;border-radius:99px;font-size:13px;font-weight:500;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .15s}
+.tab.active{background:var(--blue);color:#0f172a;border-color:var(--blue);font-weight:600}
+.tab.active.goals{background:var(--purple);border-color:var(--purple)}
+.panel{padding:0 16px}
+.add-form,.goal-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px}
+.goal-form h3{font-size:13px;font-weight:600;color:var(--purple);margin-bottom:12px}
+.form-row{display:flex;gap:8px;margin-bottom:10px}
+.form-row:last-child{margin-bottom:0}
+.form-label{font-size:11px;font-weight:500;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+.form-group{flex:1;min-width:0}
+select,input[type=text],input[type=number]{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:9px 11px;font-size:14px;font-family:var(--font);outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+select:focus,input:focus{border-color:var(--blue)}
+select option{background:#1e293b}
+.type-toggle{display:flex;gap:6px;width:100%}
+.type-btn{flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:500;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center}
+.type-btn.active.in{background:var(--green-bg);color:var(--green);border-color:var(--green)}
+.type-btn.active.out{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+.add-btn{width:100%;padding:11px;background:var(--blue);color:#0f172a;border:none;border-radius:10px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer}
+.add-btn:active{opacity:.85}
+.goal-add-btn{width:100%;padding:11px;background:var(--purple);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer}
+.goal-add-btn:active{opacity:.85}
+.custom-cat-row{display:none;margin-top:8px}
+.custom-cat-row.show{display:flex}
+.tx-list{display:flex;flex-direction:column;gap:6px}
+.tx-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;gap:12px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.tx-emoji{font-size:20px;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tx-emoji.in{background:var(--green-bg)}.tx-emoji.out{background:var(--red-bg)}
+.tx-info{flex:1;min-width:0}
+.tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-cat{font-size:12px;color:var(--muted);margin-top:1px}
+.tx-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.tx-amount{font-family:var(--mono);font-size:14px;font-weight:500}
+.tx-amount.in{color:var(--green)}.tx-amount.out{color:var(--red)}
+.tx-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:2px;opacity:.5}
+.tx-del:hover{opacity:1;color:var(--red)}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--muted);font-size:14px}
+.empty-state .emoji{font-size:36px;margin-bottom:10px}
+.goal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:8px;animation:fadeIn .2s ease}
+.goal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.goal-name{font-size:16px;font-weight:600}
+.goal-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;opacity:.5}
+.goal-del:hover{opacity:1;color:var(--red)}
+.goal-amounts{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px}
+.goal-saved{font-family:var(--mono);color:var(--purple);font-weight:500}
+.goal-target{color:var(--muted);font-family:var(--mono)}
+.progress-bar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-bottom:6px}
+.progress-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.progress-pct{font-size:11px;color:var(--muted)}
+.goal-remaining{font-size:12px;color:var(--muted);margin-top:4px}
+.goal-remaining.done{color:var(--green);font-weight:500}
+.goal-add-saved{display:flex;gap:8px;margin-top:12px}
+.goal-add-saved input{flex:1;font-size:13px;padding:8px 10px}
+.save-btn{padding:8px 14px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple);border-radius:10px;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;white-space:nowrap}
+.save-btn:hover{background:var(--purple);color:#fff}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(15,23,42,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);display:none;padding-bottom:var(--safe-bottom);z-index:100}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;font-family:var(--font);transition:color .15s}
+.nav-btn .nav-icon{font-size:20px;line-height:1}
+.nav-btn.active{color:var(--blue)}.nav-btn.active.goals-nav{color:var(--purple)}
+.toast{position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border2);border-radius:99px;padding:8px 18px;font-size:13px;color:var(--text);z-index:999;white-space:nowrap;animation:toastIn .2s ease;pointer-events:none}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-text">Carregando...</div>
+</div>
+
+<div id="login-screen">
+  <div class="login-logo">🐷</div>
+  <div class="login-title">Cofrinho</div>
+  <div class="login-sub">Controle financeiro pessoal.<br>Dados sincronizados em qualquer dispositivo.</div>
+  <button class="google-btn" id="btn-google-login">
+    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.1 19 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.4 26.8 36 24 36c-5.2 0-9.6-3.2-11.3-7.8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.4 4.2-4.3 5.6l6.2 5.2C36.9 36.2 44 31 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+    Entrar com Google
+  </button>
+  <div class="login-note">Seus dados ficam salvos na nuvem e sincronizados<br>em todos os seus dispositivos.</div>
+</div>
+
+<div id="app-screen">
+  <header class="app-header">
+    <div class="logo-wrap">
+      <div class="logo-icon">🐷</div>
+      <div class="logo-text">Cofrinho</div>
+    </div>
+    <div class="header-right">
+      <span class="sync-label">
+        <span class="sync-dot" id="sync-dot"></span>
+        <span id="sync-text">sincronizado</span>
+      </span>
+      <button class="logout-btn" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <div class="month-bar">
+    <div class="month-ctrl">
+      <button class="month-btn" id="btn-prev">‹</button>
+      <span class="month-name" id="month-name"></span>
+      <button class="month-btn" id="btn-next">›</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="card"><div class="card-label">Entradas</div><div class="card-value green" id="sum-in">R$ 0,00</div></div>
+    <div class="card"><div class="card-label">Saídas</div><div class="card-value red" id="sum-out">R$ 0,00</div></div>
+    <div class="card"><div class="card-label">Saldo</div><div class="card-value blue" id="sum-bal">R$ 0,00</div></div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-box">
+      <h3>gastos por categoria</h3>
+      <div id="chart-area"><div class="chart-empty">Adicione saídas para ver o gráfico</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="all">Todos</button>
+    <button class="tab" data-tab="in">Entradas</button>
+    <button class="tab" data-tab="out">Saídas</button>
+    <button class="tab goals" data-tab="goals">🎯 Metas</button>
+  </div>
+
+  <div class="panel" id="panel-tx">
+    <div class="add-form">
+      <div class="form-row">
+        <div class="type-toggle">
+          <button class="type-btn in active" data-type="in">↑ Entrada</button>
+          <button class="type-btn out" data-type="out">↓ Saída</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Nome / Origem</div>
+          <input type="text" id="tx-name" placeholder="Ex: iFood, Salário, Uber..." maxlength="60"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Categoria</div>
+          <select id="tx-cat"></select>
+          <div class="custom-cat-row" id="custom-cat-row">
+            <input type="text" id="tx-cat-custom" placeholder="Nome da categoria..."/>
+          </div>
+        </div>
+        <div class="form-group" style="max-width:130px">
+          <div class="form-label">Valor (R$)</div>
+          <input type="number" id="tx-val" placeholder="0,00" min="0.01" step="0.01"/>
+        </div>
+      </div>
+      <button class="add-btn" id="btn-add-tx">+ Adicionar lançamento</button>
+    </div>
+    <div class="tx-list" id="tx-list">
+      <div class="empty-state"><div class="emoji">📋</div>Nenhum lançamento ainda.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-goals" style="display:none">
+    <div class="goal-form">
+      <h3>🎯 Nova meta financeira</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Nome do objetivo</div>
+          <input type="text" id="g-name" placeholder="Ex: Viagem, iPhone, Reserva..." maxlength="50"/>
+        </div>
+        <div class="form-group" style="max-width:58px">
+          <div class="form-label">Emoji</div>
+          <input type="text" id="g-emoji" placeholder="🏖️" maxlength="2" style="text-align:center;font-size:18px;"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">Valor alvo (R$)</div>
+          <input type="number" id="g-target" placeholder="5000" min="1" step="1"/>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Já guardei (R$)</div>
+          <input type="number" id="g-saved-init" placeholder="0" min="0" step="1"/>
+        </div>
+      </div>
+      <button class="goal-add-btn" id="btn-add-goal">Criar meta</button>
+    </div>
+    <div id="goals-list"></div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-btn active" data-tab="all"><span class="nav-icon">📊</span>Todos</button>
+  <button class="nav-btn" data-tab="in"><span class="nav-icon">📈</span>Entradas</button>
+  <button class="nav-btn" data-tab="out"><span class="nav-icon">📉</span>Saídas</button>
+  <button class="nav-btn goals-nav" data-tab="goals"><span class="nav-icon">🎯</span>Metas</button>
+</nav>
+
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ─── Firebase ───────────────────────────────────────────────── */
+const fbApp = initializeApp({
+  apiKey:"AIzaSyCos915xegBHYvf7pcDHb7bXaFinB7uSvY",
+  authDomain:"cofrinho-4039d.firebaseapp.com",
+  projectId:"cofrinho-4039d",
+  storageBucket:"cofrinho-4039d.firebasestorage.app",
+  messagingSenderId:"634467300251",
+  appId:"1:634467300251:web:643e70e457d8a76dda673e"
+});
+const auth = getAuth(fbApp);
+const db   = getFirestore(fbApp);
+
+/* ─── Data ───────────────────────────────────────────────────── */
+const MONTHS  = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const CATS_IN = [
+  {v:'salario',l:'💼 Salário'},{v:'freelance',l:'💻 Freelance / Bico'},
+  {v:'bonus',l:'🎁 Bônus / Comissão'},{v:'investimento',l:'📈 Rendimento / Investimento'},
+  {v:'aluguel_rec',l:'🏠 Aluguel recebido'},{v:'presente',l:'🎀 Presente / Doação'},
+  {v:'reembolso',l:'🔄 Reembolso'},{v:'outros_in',l:'➕ Outros (personalizar)'},
+];
+const CATS_OUT = [
+  {v:'alimentacao',l:'🍔 Alimentação'},{v:'mercado',l:'🛒 Mercado / Supermercado'},
+  {v:'transporte',l:'🚗 Transporte / Combustível'},{v:'moradia',l:'🏠 Moradia / Aluguel / Contas'},
+  {v:'saude',l:'❤️ Saúde / Farmácia'},{v:'educacao',l:'📚 Educação / Cursos'},
+  {v:'lazer',l:'🎮 Lazer / Entretenimento'},{v:'assinaturas',l:'📱 Assinaturas / Apps'},
+  {v:'vestuario',l:'👗 Vestuário / Beleza'},{v:'viagem',l:'✈️ Viagem'},
+  {v:'pet',l:'🐾 Pet'},{v:'presente_dado',l:'🎁 Presente dado'},
+  {v:'outros_out',l:'➕ Outros (personalizar)'},
+];
+const EMOJIS = {salario:'💼',freelance:'💻',bonus:'🎁',investimento:'📈',aluguel_rec:'🏠',presente:'🎀',reembolso:'🔄',alimentacao:'🍔',mercado:'🛒',transporte:'🚗',moradia:'🏠',saude:'❤️',educacao:'📚',lazer:'🎮',assinaturas:'📱',vestuario:'👗',viagem:'✈️',pet:'🐾',presente_dado:'🎁'};
+
+/* ─── State ──────────────────────────────────────────────────── */
+let uid=null, allTxs=[], allGoals=[], txUnsub=null, goalUnsub=null;
+let activeTab='all', txType='in', curMonth=new Date().getMonth(), curYear=new Date().getFullYear(), chart=null, syncN=0;
+
+/* ─── Utils ──────────────────────────────────────────────────── */
+const $  = id => document.getElementById(id);
+const fmtBRL = v => 'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function setSyncing(on){ syncN=Math.max(0,syncN+(on?1:-1)); const d=$('sync-dot'),t=$('sync-text'); if(!d)return; if(syncN>0){d.className='sync-dot syncing';t.textContent='sincronizando...';}else{d.className='sync-dot';t.textContent='sincronizado';} }
+let _tt; function showToast(m){ document.querySelector('.toast')?.remove(); clearTimeout(_tt); const t=document.createElement('div'); t.className='toast';t.textContent=m; document.body.appendChild(t); _tt=setTimeout(()=>t.remove(),2500); }
+function catLabel(v,c){ if((v==='outros_in'||v==='outros_out')&&c) return c; return [...CATS_IN,...CATS_OUT].find(x=>x.v===v)?.l.replace(/^\S+\s/,'')?? v; }
+function catEmoji(v,c){ if((v==='outros_in'||v==='outros_out')&&c) return '🏷️'; return EMOJIS[v]??'📌'; }
+
+/* ─── Auth ───────────────────────────────────────────────────── */
+$('btn-google-login').addEventListener('click', async()=>{
+  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch(e){ showToast('Erro ao entrar. Tente novamente.'); }
+});
+$('btn-logout').addEventListener('click', async()=>{
+  if(!confirm('Deseja sair?')) return;
+  txUnsub?.(); goalUnsub?.();
+  await signOut(auth);
+});
+onAuthStateChanged(auth, user=>{
+  $('loading-screen').style.display='none';
+  if(user){
+    uid=user.uid;
+    $('login-screen').style.display='none';
+    $('app-screen').style.display='block';
+    $('bottom-nav').style.display='flex';
+    subscribe();
+  } else {
+    uid=null; txUnsub?.(); goalUnsub?.();
+    $('login-screen').style.display='flex';
+    $('app-screen').style.display='none';
+    $('bottom-nav').style.display='none';
+  }
+});
+
+/* ─── Firestore ──────────────────────────────────────────────── */
+function subscribe(){
+  setSyncing(true);
+  txUnsub = onSnapshot(
+    query(collection(db,'users',uid,'transactions'),orderBy('ts','desc')),
+    snap=>{ allTxs=snap.docs.map(d=>({id:d.id,...d.data()})); renderAll(); setSyncing(false); },
+    ()=>setSyncing(false)
+  );
+  goalUnsub = onSnapshot(
+    query(collection(db,'users',uid,'goals'),orderBy('ts','asc')),
+    snap=>{ allGoals=snap.docs.map(d=>({id:d.id,...d.data()})); if(activeTab==='goals') renderGoals(); setSyncing(false); },
+    ()=>setSyncing(false)
+  );
+}
+async function dbAdd(col,data){ setSyncing(true); try{ await addDoc(collection(db,'users',uid,col),{...data,ts:Date.now()}); }catch(e){ showToast('Erro ao salvar.'); setSyncing(false); } }
+async function dbDel(col,id)  { setSyncing(true); try{ await deleteDoc(doc(db,'users',uid,col,id)); }catch(e){ showToast('Erro ao remover.'); setSyncing(false); } }
+async function dbUpd(col,id,d){ setSyncing(true); try{ await updateDoc(doc(db,'users',uid,col,id),d); }catch(e){ showToast('Erro ao atualizar.'); setSyncing(false); } }
+
+/* ─── Month ──────────────────────────────────────────────────── */
+function updateMonth(){ $('month-name').textContent=MONTHS[curMonth]+' '+curYear; }
+$('btn-prev').addEventListener('click',()=>{ curMonth--; if(curMonth<0){curMonth=11;curYear--;} updateMonth(); renderAll(); });
+$('btn-next').addEventListener('click',()=>{ curMonth++; if(curMonth>11){curMonth=0;curYear++;} updateMonth(); renderAll(); });
+updateMonth();
+
+/* ─── Type toggle ────────────────────────────────────────────── */
+document.querySelectorAll('.type-btn').forEach(b=>b.addEventListener('click',()=>{
+  txType=b.dataset.type;
+  document.querySelectorAll('.type-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  fillCats();
+}));
+
+/* ─── Tabs ───────────────────────────────────────────────────── */
+function setTab(tab){
+  activeTab=tab;
+  document.querySelectorAll('.tab,.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  if(tab==='goals'){ $('panel-tx').style.display='none'; $('panel-goals').style.display='block'; renderGoals(); }
+  else             { $('panel-tx').style.display='block'; $('panel-goals').style.display='none'; renderAll(); }
+}
+document.querySelectorAll('.tab,.nav-btn').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+
+/* ─── Category select ────────────────────────────────────────── */
+function fillCats(){
+  const cats=txType==='in'?CATS_IN:CATS_OUT;
+  $('tx-cat').innerHTML=cats.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
+  checkCustom();
+}
+function checkCustom(){ const v=$('tx-cat').value; const on=v==='outros_in'||v==='outros_out'; $('custom-cat-row').classList.toggle('show',on); if(!on)$('tx-cat-custom').value=''; }
+$('tx-cat').addEventListener('change',checkCustom);
+fillCats();
+
+/* ─── Add transaction ────────────────────────────────────────── */
+$('btn-add-tx').addEventListener('click', async()=>{
+  const name=$('tx-name').value.trim(), catVal=$('tx-cat').value, custom=$('tx-cat-custom').value.trim(), val=parseFloat($('tx-val').value);
+  if(!name){ showToast('Informe o nome/origem.'); return; }
+  if(isNaN(val)||val<=0){ showToast('Informe um valor válido.'); return; }
+  if((catVal==='outros_in'||catVal==='outros_out')&&!custom){ showToast('Informe o nome da categoria.'); return; }
+  await dbAdd('transactions',{type:txType,name,catVal,customCat:custom,value:val,month:curMonth,year:curYear});
+  $('tx-name').value=''; $('tx-val').value=''; $('tx-cat-custom').value=''; $('tx-cat').selectedIndex=0; checkCustom();
+  showToast('Lançamento adicionado ✓');
+});
+
+/* ─── Delete transaction (delegation) ───────────────────────── */
+$('tx-list').addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(b) dbDel('transactions',b.dataset.del); });
+
+/* ─── Add goal ───────────────────────────────────────────────── */
+$('btn-add-goal').addEventListener('click', async()=>{
+  const name=$('g-name').value.trim(), emoji=$('g-emoji').value.trim()||'🎯', target=parseFloat($('g-target').value), saved=parseFloat($('g-saved-init').value)||0;
+  if(!name){ showToast('Informe o nome do objetivo.'); return; }
+  if(isNaN(target)||target<=0){ showToast('Informe o valor alvo.'); return; }
+  await dbAdd('goals',{name,emoji,target,saved:Math.min(saved,target)});
+  $('g-name').value=''; $('g-emoji').value=''; $('g-target').value=''; $('g-saved-init').value='';
+  showToast('Meta criada ✓');
+});
+
+/* ─── Goals list (delegation) ────────────────────────────────── */
+$('goals-list').addEventListener('click', async e=>{
+  const del=e.target.closest('[data-del-goal]');
+  const save=e.target.closest('[data-save-goal]');
+  if(del){ await dbDel('goals',del.dataset.delGoal); }
+  if(save){
+    const id=save.dataset.saveGoal, inp=document.getElementById('gs-'+id), v=parseFloat(inp?.value);
+    if(isNaN(v)||v<=0){ showToast('Informe um valor válido.'); return; }
+    const g=allGoals.find(x=>x.id===id);
+    if(g){ await dbUpd('goals',id,{saved:Math.min(+(g.saved+v).toFixed(2),g.target)}); if(inp)inp.value=''; showToast('Valor guardado ✓'); }
+  }
+});
+
+/* ─── Render ─────────────────────────────────────────────────── */
+function renderAll(){
+  const m=allTxs.filter(t=>t.month===curMonth&&t.year===curYear);
+  const tIn=m.filter(t=>t.type==='in').reduce((a,t)=>a+t.value,0);
+  const tOut=m.filter(t=>t.type==='out').reduce((a,t)=>a+t.value,0);
+  const bal=tIn-tOut;
+  $('sum-in').textContent=fmtBRL(tIn);
+  $('sum-out').textContent=fmtBRL(tOut);
+  const be=$('sum-bal'); be.textContent=fmtBRL(bal); be.className='card-value '+(bal>=0?'blue':'red');
+  renderList(m); renderChart(m);
+}
+
+function renderList(m){
+  let f=m; if(activeTab==='in') f=m.filter(t=>t.type==='in'); if(activeTab==='out') f=m.filter(t=>t.type==='out');
+  const l=$('tx-list');
+  if(!f.length){ l.innerHTML='<div class="empty-state"><div class="emoji">📋</div>Nenhum lançamento para este período.</div>'; return; }
+  l.innerHTML=f.map(t=>`<div class="tx-item">
+    <div class="tx-emoji ${t.type}">${catEmoji(t.catVal,t.customCat)}</div>
+    <div class="tx-info"><div class="tx-name">${t.name}</div><div class="tx-cat">${catLabel(t.catVal,t.customCat)}</div></div>
+    <div class="tx-right">
+      <div class="tx-amount ${t.type}">${t.type==='in'?'+':'-'} ${fmtBRL(t.value)}</div>
+      <button class="tx-del" data-del="${t.id}" aria-label="Remover">✕</button>
+    </div>
+  </div>`).join('');
+}
+
+function renderChart(m){
+  const out=m.filter(t=>t.type==='out'); const area=$('chart-area');
+  if(!out.length){ chart?.destroy(); chart=null; area.innerHTML='<div class="chart-empty">Adicione saídas para ver o gráfico</div>'; return; }
+  const cats={}; out.forEach(t=>{ const l=catLabel(t.catVal,t.customCat); cats[l]=(cats[l]||0)+t.value; });
+  const labels=Object.keys(cats), data=Object.values(cats);
+  const colors=['#60a5fa','#a78bfa','#34d399','#f87171','#fbbf24','#fb923c','#38bdf8','#f472b6','#4ade80','#c084fc'];
+  if(!chart){
+    area.innerHTML='<div class="chart-wrap"><canvas id="theChart"></canvas></div>';
+    chart=new Chart($('theChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors.slice(0,data.length),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11,family:'DM Sans'},padding:12,boxWidth:10,boxHeight:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtBRL(ctx.raw)}`}}},cutout:'62%'}});
+  } else { chart.data.labels=labels; chart.data.datasets[0].data=data; chart.data.datasets[0].backgroundColor=colors.slice(0,data.length); chart.update(); }
+}
+
+function renderGoals(){
+  const l=$('goals-list');
+  if(!allGoals.length){ l.innerHTML='<div class="empty-state"><div class="emoji">🎯</div>Nenhuma meta criada ainda.</div>'; return; }
+  l.innerHTML=allGoals.map(g=>{
+    const pct=Math.min(100,Math.round((g.saved/g.target)*100)), done=g.saved>=g.target, fill=done?'#34d399':pct>60?'#a78bfa':'#60a5fa';
+    return `<div class="goal-card">
+      <div class="goal-header"><div class="goal-name">${g.emoji} ${g.name}</div><button class="goal-del" data-del-goal="${g.id}" aria-label="Remover">✕</button></div>
+      <div class="goal-amounts"><span class="goal-saved">${fmtBRL(g.saved)} guardados</span><span class="goal-target">meta: ${fmtBRL(g.target)}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${fill}"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div class="progress-pct">${pct}% concluído</div>
+        <div class="goal-remaining ${done?'done':''}">${done?'🎉 Meta atingida!':'Falta '+fmtBRL(g.target-g.saved)}</div>
+      </div>
+      ${!done?`<div class="goal-add-saved"><input type="number" id="gs-${g.id}" placeholder="Adicionar valor guardado..." min="0.01" step="0.01"/><button class="save-btn" data-save-goal="${g.id}">+ Guardar</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
